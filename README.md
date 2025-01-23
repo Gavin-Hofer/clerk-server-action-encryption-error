@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Description of Error
 
-## Getting Started
+After upgrading `@clerk/nextjs` from version 6.9.15 to 6.10.1, server actions started failing on `await currentUser()` with the following error:
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+ ⨯ Error: Clerk: Unable to decrypt request data, this usually means the encryption key is invalid. Ensure the encryption key is properly set. For more information, see: https://clerk.com/docs/references/nextjs/clerk-middleware#dynamic-keys. (code=encryption_key_invalid)
+    at v (.next/server/chunks/85.js:33:677)
+    at y (.next/server/chunks/85.js:33:639)
+    at l (.next/server/chunks/85.js:17:32492)
+    at <unknown> (.next/server/chunks/85.js:15:30598)
+    at <unknown> (.next/server/chunks/85.js:15:30225)
+    at k (.next/server/chunks/85.js:15:31759)
+    at async m (.next/server/app/page.js:1:32973)
+    at async h (.next/server/app/page.js:1:33057) {
+  digest: '689539690'
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Implementation-specific Details
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Instead of using `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, I have an environment variable called `CLERK_PUBLISHABLE_KEY` that I pass to `<ClerkProvider>` and `clerkMiddleware` at runtime (this is so I can use the same docker image with both test and live keys).
+- This error did not happen when using the default environment variables instead of passing them at runtime as described above.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Replication Instructions
 
-## Learn More
+1. Add your clerk keys to `.env.local`. Note: the publishable key should be called `CLERK_PUBLISHABLE_KEY` not `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`.
 
-To learn more about Next.js, take a look at the following resources:
+```
+CLERK_PUBLISHABLE_KEY=pk_***
+CLERK_SECRET_KEY=sk_***
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. Generate a `CLERK_ENCRYPTION_KEY` and add it to `.env.local`:
 
-## Deploy on Vercel
+```bash
+echo CLERK_ENCRYPTION_KEY=$(openssl rand -base64 32) >> .env.local
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Create a production build (error not seen in development mode)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+```
+
+4. Run and try to load the page
+
+```bash
+npm run start
+```
+
+### Expected Error
+
+When I attempt to load the page I get an error in the server component render. It errors out on the line:
+
+```ts
+const user = await currentUser();
+```
+
+With the following error message (on the server):
+
+```
+ ⨯ Error: Clerk: Unable to decrypt request data, this usually means the encryption key is invalid. Ensure the encryption key is properly set. For more information, see: https://clerk.com/docs/references/nextjs/clerk-middleware#dynamic-keys. (code=encryption_key_invalid)
+    at v (.next/server/chunks/85.js:33:677)
+    at y (.next/server/chunks/85.js:33:639)
+    at l (.next/server/chunks/85.js:17:32492)
+    at <unknown> (.next/server/chunks/85.js:15:30598)
+    at <unknown> (.next/server/chunks/85.js:15:30225)
+    at k (.next/server/chunks/85.js:15:31759)
+    at async m (.next/server/app/page.js:1:32973)
+    at async h (.next/server/app/page.js:1:33057) {
+  digest: '689539690'
+}
+```
+
+This happens whether or not you are logged in.
