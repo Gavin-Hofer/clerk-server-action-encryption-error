@@ -49,6 +49,34 @@ npm run build
 npm run start
 ```
 
+### Replication Instructions (with Docker)
+
+1. Add your clerk keys to `.env.local`. Note: the publishable key should be called `CLERK_PUBLISHABLE_KEY` not `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`.
+
+```
+CLERK_PUBLISHABLE_KEY=pk_***
+CLERK_SECRET_KEY=sk_***
+
+```
+
+2. Generate a `CLERK_ENCRYPTION_KEY` and add it to `.env.local`:
+
+```bash
+echo CLERK_ENCRYPTION_KEY=$(openssl rand -base64 32) >> .env.local
+```
+
+3. Build the docker image
+
+```bash
+docker build -t app .
+```
+
+4. Run the docker container
+
+```bash
+docker run --rm -p 3000:3000 --env-file .env.local app
+```
+
 ### Expected Error
 
 When I attempt to load the page I get an error in the server component render. It errors out on the line:
