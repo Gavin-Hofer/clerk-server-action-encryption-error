@@ -34,9 +34,7 @@ export default async function Home() {
         <h1 className="text-2xl font-bold">You are currently signed in</h1>
         <div className="flex flex-col gap-2 w-full">
           <h2 className="text-xl font-bold">Your name</h2>
-          <p className="text-lg">
-            {user?.firstName} {user?.lastName}
-          </p>
+          <p className="text-lg">{user?.fullName}</p>
         </div>
         <SignOutButton>
           <div className="bg-gray-500 cursor-pointer text-white w-32 py-2 rounded-lg text-center">
